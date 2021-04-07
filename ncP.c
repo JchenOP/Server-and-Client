@@ -35,18 +35,6 @@ int main(int argc, char **argv) {
         usage(argv[0]);
         return -1;
     }
-  printf("Command parse outcome %d\n", retVal);
-
-  printf("-k = %d\n", cmdOps.option_k);
-  printf("-l = %d\n", cmdOps.option_l);
-  printf("-v = %d\n", cmdOps.option_v);
-  printf("-r = %d\n", cmdOps.option_r);
-  printf("-p = %d\n", cmdOps.option_p);
-  printf("-p port = %u\n", cmdOps.source_port);
-  printf("-w  = %d\n", cmdOps.option_w);
-  printf("Timeout value = %u\n", cmdOps.timeout);
-  printf("Host to connect to = %s\n", cmdOps.hostname);
-  printf("Port to connect to = %u\n", cmdOps.port);
 
     struct addrinfo hints, *res;
     int yes = 1;
@@ -55,12 +43,13 @@ int main(int argc, char **argv) {
     int sockfd = socket(PF_INET, SOCK_STREAM, 0);
     setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
 
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
 
     if(cmdOps.option_l) {   //Start as server
-        memset(&hints, 0, sizeof hints);
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_flags = AI_PASSIVE;
 
         char port[5];
         sprintf(port, "%u", cmdOps.port);
@@ -104,11 +93,10 @@ int main(int argc, char **argv) {
                         }
                         //Standard input
                         else if (pfds[i].fd == STDIN_FILENO) {
-                            char buf[1024];
                             int length;
-                            if ((length = read(STDIN_FILENO, buf, sizeof buf) > 0)) {
+                            memset(&buf, 0, sizeof buf);
+                            if ((length = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
                                 buf[length] = '\0';
-                                fprintf(stderr,"%d",length);
                                 for (int j = 2; j < fd_count; j++) {
                                     if (send(pfds[j].fd, buf, length, 0) == -1) {
                                         perror("sending error");
@@ -121,8 +109,10 @@ int main(int argc, char **argv) {
                         }
                         //Receive message
                         else {
+                            memset(&buf, 0, sizeof buf);
                             int sender = pfds[i].fd;
                             int length = recv(pfds[i].fd, &buf, sizeof buf, 0);
+                            fprintf(stderr,"length of rec: %d\n",length);
                             printf("%s", buf);
 
                             if (length <= 0) {
@@ -156,11 +146,6 @@ int main(int argc, char **argv) {
             }
     }
     else{    // Start as client
-            memset(&hints, 0, sizeof hints);
-            hints.ai_family = AF_INET;
-            hints.ai_socktype = SOCK_STREAM;
-            hints.ai_flags = AI_PASSIVE;
-
             if (cmdOps.option_p) {
                 char port[5];
                 sprintf(port, "%u", cmdOps.port);
@@ -169,7 +154,6 @@ int main(int argc, char **argv) {
             else{
                 getaddrinfo(cmdOps.hostname, "8888", &hints, &res);
             }
-
 
             //bind(sockfd, res->ai_addr, res->ai_addrlen);
 
@@ -180,7 +164,6 @@ int main(int argc, char **argv) {
             }
 
             struct pollfd pfds[2];
-            char buf[1024];
 
             pfds[0].fd = STDIN_FILENO;
             pfds[0].events = POLLIN;
