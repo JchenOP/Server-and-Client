@@ -31,6 +31,10 @@ int main(int argc, char **argv) {
 
   struct commandOptions cmdOps;
   int retVal = parseOptions(argc, argv, &cmdOps);
+    if(retVal == PARSE_ERROR) {
+        usage(argv[0]);
+        return -1;
+    }
   printf("Command parse outcome %d\n", retVal);
 
   printf("-k = %d\n", cmdOps.option_k);
@@ -62,7 +66,7 @@ int main(int argc, char **argv) {
         sprintf(port, "%u", cmdOps.port);
         getaddrinfo(cmdOps.hostname, port, &hints, &res);
         bind(sockfd, res->ai_addr, res->ai_addrlen);
-        listen(sockfd, 5);
+        listen(sockfd, 20);
         printf("server: waiting for connections...\n");
 
             int fd_size = 3;
@@ -146,7 +150,7 @@ int main(int argc, char **argv) {
                     if (cmdOps.option_k && fd_count == 2) printf("server: waiting for connections...\n");
                     else if (!cmdOps.option_k && fd_count == 2) {
                         close(sockfd);
-                        exit(1);
+                        exit(0);
                     }
                 }
             }
