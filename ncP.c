@@ -31,17 +31,15 @@ int main(int argc, char **argv) {
 
   struct commandOptions cmdOps;
   int retVal = parseOptions(argc, argv, &cmdOps);
-    if(retVal == PARSE_ERROR) {
+    if(retVal != PARSE_OK) {
         usage(argv[0]);
         return -1;
     }
 
     struct addrinfo hints, *res;
-    int yes = 1;
     char buf[1024];
 
     int sockfd = socket(PF_INET, SOCK_STREAM, 0);
-    setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
@@ -112,7 +110,6 @@ int main(int argc, char **argv) {
                             memset(&buf, 0, sizeof buf);
                             int sender = pfds[i].fd;
                             int length = recv(pfds[i].fd, &buf, sizeof buf, 0);
-                            fprintf(stderr,"length of rec: %d\n",length);
                             printf("%s", buf);
 
                             if (length <= 0) {
@@ -154,15 +151,13 @@ int main(int argc, char **argv) {
             else{
                 getaddrinfo(cmdOps.hostname, "8888", &hints, &res);
             }
-
-            //bind(sockfd, res->ai_addr, res->ai_addrlen);
+            bind(sockfd, res->ai_addr, res->ai_addrlen);
 
             if (connect(sockfd, res->ai_addr, res->ai_addrlen) != 0) {
                 close(sockfd);
                 perror("Connection failed");
                 exit(-1);
             }
-
             struct pollfd pfds[2];
 
             pfds[0].fd = STDIN_FILENO;
@@ -187,7 +182,8 @@ int main(int argc, char **argv) {
                 for(int i = 0; i < 2; i++) {
                     if (pfds[i].revents & POLLIN) {
                         if(pfds[i].fd == STDIN_FILENO){
-                           int length;
+                            memset(&buf, 0, sizeof buf);
+                            int length;
                             if ((length = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
                                 buf[length] = '\0';
                                 send(sockfd, buf, strlen(buf), 0);
@@ -198,8 +194,13 @@ int main(int argc, char **argv) {
                             }
                         }
                         else {
-                            recv(sockfd, &buf, sizeof buf, 0);
-                            printf("%s", buf);
+                            memset(&buf, 0, sizeof buf);
+                            if(recv(sockfd, &buf, sizeof buf, 0) < 0){
+                                perror("receive error");
+                                close(sockfd);
+                                exit(0);
+                            }
+                            else printf("%s", buf);
                         }
                     }
                 }
