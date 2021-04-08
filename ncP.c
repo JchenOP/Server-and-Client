@@ -12,6 +12,8 @@
 #include <arpa/inet.h>
 #include <poll.h>
 
+char buf[1024];
+
 void del_from_pfds(struct pollfd pfds[], int i, int *fd_count){
     pfds[i] = pfds[*fd_count-1];
     (*fd_count)--;
@@ -23,6 +25,39 @@ void add_to_pfds(struct pollfd *pfds[], int newfd, int *fd_count)
     (*pfds)[*fd_count].events = POLLIN;
     (*fd_count)++;
 }
+
+void recv_message(int sockfd){
+    int len;
+    memset(&buf, 0, sizeof buf);
+    if((len = recv(sockfd, &buf, sizeof buf, 0)) < 0){
+        perror("receive error");
+        close(sockfd);
+        exit(1);
+    }
+    else printf("%s", buf);
+
+    while(len == sizeof buf){
+        memset(&buf, 0, sizeof buf);
+        len = recv(sockfd, buf, strlen(buf), 0);
+    }
+}
+
+void send_message(int sockfd){
+    int len;
+    if ((len = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
+        send(sockfd, buf, strlen(buf), 0);
+    }
+    else{
+        close(sockfd);
+        exit(0);
+    }
+    while(len == sizeof buf){
+        memset(&buf, 0, sizeof buf);
+        len = read(STDIN_FILENO, buf, sizeof buf);
+        send(sockfd, buf, strlen(buf), 0);
+    }
+}
+
 
 int main(int argc, char **argv) {
 
@@ -37,7 +72,6 @@ int main(int argc, char **argv) {
     }
 
     struct addrinfo hints, *res;
-    char buf[1024];
 
     int sockfd = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -94,7 +128,6 @@ int main(int argc, char **argv) {
                             int length;
                             memset(&buf, 0, sizeof buf);
                             if ((length = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
-                                buf[length] = '\0';
                                 for (int j = 2; j < fd_count; j++) {
                                     if (send(pfds[j].fd, buf, length, 0) == -1) {
                                         perror("sending error");
@@ -183,24 +216,10 @@ int main(int argc, char **argv) {
                     if (pfds[i].revents & POLLIN) {
                         if(pfds[i].fd == STDIN_FILENO){
                             memset(&buf, 0, sizeof buf);
-                            int length;
-                            if ((length = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
-                                buf[length] = '\0';
-                                send(sockfd, buf, strlen(buf), 0);
-                            }
-                            else{
-                                close(sockfd);
-                                exit(0);
-                            }
+                            send_message(sockfd);
                         }
                         else {
-                            memset(&buf, 0, sizeof buf);
-                            if(recv(sockfd, &buf, sizeof buf, 0) < 0){
-                                perror("receive error");
-                                close(sockfd);
-                                exit(1);
-                            }
-                            else printf("%s", buf);
+                            recv_message(sockfd);
                         }
                     }
                 }

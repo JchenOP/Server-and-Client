@@ -48,13 +48,15 @@ void *Client_send(void* sockfd){
         int length;
         memset(&buf,0,sizeof buf);
         if ((length = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
-            alarm(timeout);
-            buf[length] = '\0';
             send(id, buf, strlen(buf), 0);
             alarm(timeout);
         } else {
             close(id);
             break;
+        }
+        while(length == sizeof buf){
+            send(id, buf, strlen(buf), 0);
+            alarm(timeout);
         }
     }
 }
@@ -62,27 +64,34 @@ void *Client_send(void* sockfd){
 void *Client_receive(void * sockfd){
     int id = *(int *) sockfd;
     while(alarmed) {
+        int length;
         memset(&buf,0,sizeof buf);
-        if(recv(id, &buf, sizeof buf, 0) > 0){
+        if((length = recv(id, &buf, sizeof buf, 0)) > 0){
             alarm(timeout);
+            printf("%s", buf);
         }
         else{
             close(id);
             break;
         }
-        printf("%s", buf);
+        while (length == sizeof buf){
+            alarm(timeout);
+            length = recv(id, &buf, sizeof buf, 0);
+            printf("%s", buf);
+        }
     }
 }
 
 void *Server_send(){
     while(1) {
         int length;
-        memset(&buf,0,sizeof buf);
-        length = read(STDIN_FILENO, buf, sizeof buf);
-        buf[length] = '\0';
-        for(int i = 0; i<fd_count; i++) {
-            send(clients[i], buf, strlen(buf), 0);
-        }
+        do {
+            memset(&buf, 0, sizeof buf);
+            length = read(STDIN_FILENO, buf, sizeof buf);
+            for (int i = 0; i < fd_count; i++) {
+                send(clients[i], buf, strlen(buf), 0);
+            }
+        }while(length == sizeof buf);
     }
 }
 
