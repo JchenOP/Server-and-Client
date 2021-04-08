@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
                             if(recv(sockfd, &buf, sizeof buf, 0) < 0){
                                 perror("receive error");
                                 close(sockfd);
-                                exit(0);
+                                exit(1);
                             }
                             else printf("%s", buf);
                         }

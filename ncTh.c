@@ -100,7 +100,6 @@ void *Server_receive(void * sockfd){
             }
         }
         else{
-            fprintf(stderr,"disconnect");
             delete_client(id);
             close(id);
             break;
@@ -123,7 +122,6 @@ int main(int argc, char **argv) {
     }
 
     struct addrinfo hints, *res;
-    int yes = 1;
 
     int sockfd = socket(PF_INET, SOCK_STREAM, 0);
     memset(&hints, 0, sizeof hints);
@@ -161,7 +159,6 @@ int main(int argc, char **argv) {
           int clientfd;
           if ((clientfd = accept(sockfd, (struct sockaddr *) &clientAddress, &size)) == -1) {
               perror("server: fail connect");
-              close(sockfd);
           } else {
               char dst[INET_ADDRSTRLEN];
               inet_ntop(clientAddress.sin_family, &clientAddress.sin_addr, dst, sizeof dst);
@@ -171,12 +168,12 @@ int main(int argc, char **argv) {
           }
           if (pthread_create(&thread_receive[thread_id], NULL, Server_receive, &clients[fd_count]) != 0) {
               perror("Unable to receive");
-              close(sockfd);
-              exit(1);
           }
           fd_count++;
           thread_id++;
+          if(cmdOps.option_k && clients[0] == 0) break;
       }
+      close(sockfd);
     }
     else{    // Start as client
 
@@ -221,7 +218,5 @@ int main(int argc, char **argv) {
         pthread_join(thread_receive, NULL);
 
         close(sockfd);
-        exit(0);
-
     }
 }
