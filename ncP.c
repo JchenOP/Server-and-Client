@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 #include <poll.h>
 
-char buf[1024];
+char buf[16384];
 
 void del_from_pfds(struct pollfd pfds[], int i, int *fd_count){
     pfds[i] = pfds[*fd_count-1];
@@ -129,13 +129,17 @@ int main(int argc, char **argv) {
                             memset(&buf, 0, sizeof buf);
                             if ((length = read(STDIN_FILENO, buf, sizeof buf)) > 0) {
                                 for (int j = 2; j < fd_count; j++) {
-                                    if (send(pfds[j].fd, buf, length, 0) == -1) {
-                                        perror("sending error");
-                                    }
+                                    send(pfds[j].fd, buf, length, 0);
                                 }
                             } else {
                                  close(pfds[i].fd);
                                  del_from_pfds(pfds, i, &fd_count);
+                            }
+                            while(length == sizeof buf){
+                                length = read(STDIN_FILENO, buf, sizeof buf);
+                                for (int j = 2; j < fd_count; j++) {
+                                    send(pfds[j].fd, buf, length, 0);
+                                }
                             }
                         }
                         //Receive message
