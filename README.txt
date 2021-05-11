@@ -1,2 +1,2 @@
 
-This is a project has same function as netCat in cmd
+This is a project has same function as netCat on linux
